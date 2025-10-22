@@ -1,0 +1,164 @@
+# AIDE Platform - Data Pipeline Schedule Configuration
+# ======================================================
+# Last updated: 2025-10-20
+# Purpose: Define scheduled jobs for data collection and processing
+
+# Global Settings
+global:
+  timezone: "Asia/Seoul"
+  max_parallel_jobs: 2
+  log_level: "INFO"
+  error_notification:
+    enabled: true
+    channels:
+      - "log"
+      # - "slack"  # Future
+      # - "email"  # Future
+
+# Jobs Configuration
+jobs:
+  # ============================================
+  # 1. Naver News Collection
+  # ============================================
+  naver_news:
+    enabled: true
+    schedule: "30 8 * * *"  # Every day at 08:30 KST
+    timeout_minutes: 30
+    concurrency: 5
+    rate_limit:
+      requests_per_minute: 100
+    retry:
+      max_attempts: 3
+      backoff_seconds: 60
+
+    # Data sources
+    sources:
+      - name: "api_search"
+        keywords:
+          - "PF"
+          - "부동산"
+          - "재개발"
+          - "재건축"
+          - "분양"
+          - "청약"
+          - "아파트"
+          - "주택"
+          - "대출"
+          - "금리"
+          - "전세"
+          - "월세"
+          - "임대"
+          - "주거"
+          - "건설"
+          - "부동산정책"
+          - "주택정책"
+          - "DTI"
+          - "LTV"
+          - "DSR"
+          - "종부세"
+          - "양도세"
+          - "취득세"
+          - "1주택"
+          - "다주택"
+          - "갭투자"
+
+      - name: "section_crawl"
+        url: "https://news.naver.com/section/101"  # 경제 > 부동산
+
+  # ============================================
+  # 2. KDI Policy Documents
+  # ============================================
+  kdi_policy:
+    enabled: true
+    schedule: "0 9 * * *"  # Every day at 09:00 KST
+    timeout_minutes: 20
+    concurrency: 2
+    rate_limit:
+      requests_per_minute: 10
+    retry:
+      max_attempts: 3
+      backoff_seconds: 120
+
+    # Filters
+    filters:
+      categories:
+        - "경제정책"
+        - "재정정책"
+        - "금융정책"
+        - "부동산정책"
+      date_range_days: 7  # Collect last 7 days
+
+  # ============================================
+  # 3. Credit Rating Research
+  # ============================================
+  credit_rating:
+    enabled: true
+    schedule: "0 10 * * 1-5"  # Weekdays at 10:00 KST
+    timeout_minutes: 30
+    concurrency: 2
+    rate_limit:
+      requests_per_minute: 5
+    retry:
+      max_attempts: 3
+      backoff_seconds: 180
+
+    # Agencies
+    agencies:
+      - name: "kisrating"
+        url: "https://www.kisrating.com"
+        enabled: true
+
+      - name: "korearatings"
+        url: "https://www.korearatings.com"
+        enabled: true
+
+      - name: "nice"
+        url: "https://www.nicerating.com"
+        enabled: false  # Not yet implemented
+
+      - name: "kmri"
+        url: "https://www.kmri.co.kr"
+        enabled: false  # Not yet implemented
+
+  # ============================================
+  # 4. Paper Headlines (Future)
+  # ============================================
+  paper_headline:
+    enabled: false  # Not yet implemented
+    schedule: "0 7 * * *"  # Every day at 07:00 KST
+    timeout_minutes: 15
+    concurrency: 3
+    sources:
+      - "한국경제"
+      - "매일경제"
+      - "서울경제"
+
+# Processing Pipeline Configuration
+processing:
+  # Deduplication settings
+  deduplication:
+    enabled: true
+    similarity_threshold: 0.85  # DBSCAN epsilon
+    min_cluster_size: 2
+
+  # Classification settings
+  classification:
+    enabled: true
+    model: "claude-3-5-sonnet-20241022"
+    batch_size: 10
+    categories:
+      - "정책/규제"
+      - "시장동향"
+      - "금융/대출"
+      - "재개발/재건축"
+      - "분양/청약"
+      - "임대차"
+      - "세금/제도"
+      - "기타"
+
+  # Representative article selection
+  representative:
+    enabled: true
+    selection_criteria:
+      information_weight: 0.5
+      source_credibility_weight: 0.5
