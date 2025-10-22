@@ -1,0 +1,6 @@
+# 노션 통합을 위한 패키지
+notion-client==2.2.1
+
+# 기타 공통 패키지
+python-dotenv==1.0.0
+requests==2.31.0

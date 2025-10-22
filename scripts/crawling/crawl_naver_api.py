@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-네이버 뉴스 API 크롤러 (insight_test 키워드, 오늘 기사만)
+네이버 뉴스 API 크롤러 (노션 키워드 관리, 오늘 기사만)
 
 통합 크롤링 + 전처리:
-1. Naver News API 크롤링 (오늘 날짜 필터링)
-2. aide-preprocessing을 통한 전처리 및 DB 저장
+1. 노션 데이터베이스에서 키워드 로드 (실패 시 기본 키워드 사용)
+2. Naver News API 크롤링 (오늘 날짜 필터링)
+3. aide-preprocessing을 통한 전처리 및 DB 저장
 """
 import sys
 import os
@@ -16,12 +17,14 @@ from datetime import datetime, date
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "aide-preprocessing"))
 sys.path.insert(0, str(project_root / "aide-data-core"))
+sys.path.insert(0, str(project_root / "scripts"))
 
 from dotenv import load_dotenv
 load_dotenv(project_root / "aide-crawlers" / ".env")
 
 from aide_preprocessing import PreprocessingPipeline
 from aide_data_core.models import get_engine, get_session, NaverNews
+from utils.notion_keywords import get_crawler_keywords
 
 
 def search_naver_news(keyword: str, display: int = 100):
@@ -72,50 +75,21 @@ def main():
     """메인 크롤링 + 전처리 함수"""
     print()
     print("=" * 80)
-    print("네이버 뉴스 API 크롤러 (insight_test 키워드, 오늘 기사만)")
+    print("네이버 뉴스 API 크롤러 (노션 키워드 관리, 오늘 기사만)")
     print("=" * 80)
     print(f"크롤링 날짜: {date.today().isoformat()}")
     print()
 
-    # Keywords (insight_test 검색어 26개)
-    keywords = [
-        # 부동산 금융 관련
-        "PF",
-        "프로젝트 파이낸싱",
-        "프로젝트파이낸싱",
-        "브릿지론",
-        "부동산신탁",
+    # 노션에서 키워드 로드 (실패 시 기본 키워드 사용)
+    print("📋 키워드 로드 중...")
+    keywords = get_crawler_keywords(fallback_to_default=True)
 
-        # 부동산 시장 관련
-        "부동산경매",
-        "공매",
-        "부실채권",
-        "NPL",
-        "리츠",
+    if not keywords:
+        print("❌ 키워드를 로드할 수 없습니다")
+        return 0
 
-        # 건설 관련
-        "건설사",
-        "시공사",
-
-        # 신탁사 (주요)
-        "한국토지신탁",
-        "한국자산신탁",
-        "대한토지신탁",
-        "코람코자산신탁",
-        "KB부동산신탁",
-        "하나자산신탁",
-        "아시아신탁",
-        "우리자산신탁",
-        "무궁화신탁",
-        "코리아신탁",
-        "교보자산신탁",
-        "대신자산신탁",
-        "신영부동산신탁",
-        "한국투자부동산신탁",
-    ]
-
-    print(f"키워드: {len(keywords)}개")
-    print(f"예상 크롤링: ~{len(keywords) * 100}개 (필터링 전)")
+    print(f"✅ 키워드: {len(keywords)}개")
+    print(f"   예상 크롤링: ~{len(keywords) * 100}개 (필터링 전)")
     print()
 
     # Initialize preprocessing pipeline
